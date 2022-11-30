@@ -73,9 +73,31 @@ class Database:
 
         await worksheet.append_row([nickname, hashed_password])
 
-        return 
+        return
     
+    async def unregister_nickname(self, nickname: str, password: str, userid: str):
+        worksheet = await self._get_worksheet(0)
 
-
+        if not await self.is_password_and_nickname_valid(nickname, password, userid):
+            return False
         
+        cell = await self._find_value_from_column(worksheet, 1, nickname)
+        await worksheet.delete_row(cell.row)
+        return True
+    
+    async def change_password(self, nickname: str, password: str, userid: str, new_password: str):
+        worksheet = await self._get_worksheet(0)
 
+        if not await self.is_password_and_nickname_valid(nickname, password, userid):
+            return False
+        
+        hashed_password = hashlib.sha256(bytes(new_password + userid, "utf-8"), usedforsecurity=True).hexdigest()
+        cell = await self._find_value_from_column(worksheet, 1, nickname)
+        await worksheet.update_cell(cell.row, cell.col + 1, hashed_password)
+        return True
+    
+    async def increment_counter(self) -> int:
+        worksheet = await self._get_worksheet(1)
+        cell = await worksheet.cell(1, 2)
+        await worksheet.update_cell(1, 2, int(cell.value) + 1)
+        return int(cell.value)

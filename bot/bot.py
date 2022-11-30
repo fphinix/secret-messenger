@@ -28,12 +28,12 @@ async def confess(inter: ApplicationCommandInteraction, message: str, nickname: 
                       timestamp=datetime.now())
         await inter.edit_original_response(embed=embed)
         return
-        
-    description = f"{message} - {nickname}"
+    
+    current_count = await database.increment_counter()
+    # description = f"**[{current_count:04}] {nickname} confessed:** {message}"
+    description = f"**{nickname} confessed:** {message}\n({current_count:04})"
 
-    embed = Embed(title="Confession",
-                  description=description,
-                  timestamp=datetime.now())
+    embed = Embed(description=description)
 
     await inter.channel.send(embed=embed)
     return
@@ -57,3 +57,39 @@ async def register(inter: ApplicationCommandInteraction, nickname: str, password
     await inter.edit_original_response(embed=embed)
     return 
 
+@bot.slash_command(name="unregister", description="Unregister a nickname with a password")
+async def unregister(inter: ApplicationCommandInteraction, nickname: str, password: str) -> None:
+    
+        await inter.response.defer(ephemeral=True)
+        if not await database.is_password_and_nickname_valid(nickname, password, str(inter.author.id)):
+            embed = Embed(title="Confession",
+                        description=f"Sorry, the nickname: `{nickname}`, does not exist in the database.",
+                        timestamp=datetime.now())
+            await inter.edit_original_response(embed=embed)
+            return 
+    
+        await database.unregister_nickname(nickname, password, str(inter.author.id))
+        embed = Embed(title="Confession",
+                    description=f"RIP 🥀 {nickname}\n\nFly high butterfly 🥹\n\n🕊️ Died peacefully in {datetime.now().strftime('%b %d, %Y')}")
+    
+        await inter.channel.send(embed=embed)
+        return
+    
+@bot.slash_command(name="change_password", description="Change password for a nickname")
+async def change_password(inter: ApplicationCommandInteraction, nickname: str, old_password: str, new_password: str) -> None:
+
+    await inter.response.defer(ephemeral=True)
+    if not await database.is_password_and_nickname_valid(nickname, old_password, str(inter.author.id)):
+        embed = Embed(title="Confession",
+                    description=f"Sorry, the nickname: `{nickname}`, does not exist in the database.",
+                timestamp=datetime.now())
+        await inter.edit_original_response(embed=embed)
+        return 
+
+    await database.change_password(nickname, old_password, new_password, str(inter.author.id))
+    embed = Embed(title="Confession",
+                description=f"Successfully changed password for the nickname: `{nickname}` from: `{old_password}` to: `{new_password}`",
+                timestamp=datetime.now())
+
+    await inter.edit_original_response(embed=embed)
+    return
