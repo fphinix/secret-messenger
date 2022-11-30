@@ -1,0 +1,81 @@
+from typing import Optional, Tuple
+from google.auth.credentials import Scoped
+from gspread.cell import Cell
+from gspread_asyncio import AsyncioGspreadWorksheet
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import gspread_asyncio
+import os
+import hashlib
+
+
+from google.oauth2.service_account import Credentials
+
+class Database:
+
+    def __init__(self, spreadsheet_key: str) -> None:
+
+        def get_creds() -> Scoped:
+            env_fields = ["token", "type", "project_id", "private_key_id",
+                "private_key", "client_email", "client_email", "auth_uri",
+                "token_uri", "auth_provider_x509_cert_url", "client_x509_cert_url"]
+
+            creds = Credentials.from_service_account_info({ cred: os.environ.get(cred) for cred in env_fields })
+            scoped = creds.with_scopes([
+                "https://spreadsheets.google.com/feeds",
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive",
+            ])
+            return scoped
+
+        self.agcm = gspread_asyncio.AsyncioGspreadClientManager(get_creds)
+        self.spreadsheet_key = spreadsheet_key
+        return
+
+    async def _get_worksheet(self, index: int) -> AsyncioGspreadWorksheet:
+        """Helper function"""
+        agc = await self.agcm.authorize()
+        ss = await agc.open_by_key(self.spreadsheet_key)
+        return await ss.get_worksheet(index)
+
+    async def _find_value_from_column(self, worksheet: AsyncioGspreadWorksheet, column_number: int, value: str) -> Optional[Cell]:
+        """Helper function"""
+        records = await worksheet.get_all_values()
+        for row_idx, row in enumerate(records[1:]): #skip first value
+            row_value = row[column_number - 1]
+            if row_value  == value:
+                return Cell(row_idx+2, column_number, row_value)
+        return None
+
+    async def is_password_and_nickname_valid(self, nickname: str, password: str, userid: str) -> bool:
+        worksheet = await self._get_worksheet(0)
+        
+        cell = await self._find_value_from_column(worksheet, 1, nickname)
+        if cell is None:
+            return False
+        
+        hashed_password = hashlib.sha256(bytes(password + userid, "utf-8"), usedforsecurity=True).hexdigest()
+        stored_hashed_password = await worksheet.cell(cell.row, cell.col + 1)
+
+        return hashed_password == stored_hashed_password.value
+
+    async def is_nickname_duplicate(self, nickname: str) -> bool:
+        worksheet = await self._get_worksheet(0)
+        cell = await self._find_value_from_column(worksheet, 1, nickname)
+        return cell is not None
+
+    async def register_nickname(self, nickname: str, password: str, userid: str):
+
+        worksheet = await self._get_worksheet(0)
+        hashed_password = hashlib.sha256(bytes(password + userid, "utf-8"), usedforsecurity=True).hexdigest()
+
+        await worksheet.append_row([nickname, hashed_password])
+
+        return 
+    
+
+
+        
+
