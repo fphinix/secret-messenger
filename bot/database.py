@@ -85,7 +85,7 @@ class Database:
         await worksheet.delete_row(cell.row)
         return True
     
-    async def change_password(self, nickname: str, password: str, userid: str, new_password: str):
+    async def change_password(self, nickname: str, password: str, new_password: str, userid: str):
         worksheet = await self._get_worksheet(0)
 
         if not await self.is_password_and_nickname_valid(nickname, password, userid):

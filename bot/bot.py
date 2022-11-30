@@ -77,7 +77,7 @@ async def unregister(inter: ApplicationCommandInteraction, nickname: str, passwo
         await inter.channel.send(embed=embed)
         return
     
-@bot.slash_command(name="change_password", description="Change password for a nickname")
+@bot.slash_command(name="changepassword", description="Change password for a nickname")
 async def change_password(inter: ApplicationCommandInteraction, nickname: str, old_password: str, new_password: str) -> None:
 
     await inter.response.defer(ephemeral=True)
