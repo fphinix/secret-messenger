@@ -95,3 +95,17 @@ async def change_password(inter: ApplicationCommandInteraction, nickname: str, o
 
     await inter.edit_original_response(embed=embed)
     return
+
+@bot.slash_command(name="prompt", description="Create a prompted confession.")
+async def confess(inter: ApplicationCommandInteraction, ask_a_question: str) -> None:
+
+    await inter.response.defer(ephemeral=True)
+
+    current_count = await database.question_increment_counter()
+    # description = f"**[{current_count:04}] {nickname} confessed:** {message}"
+    description = f"** Prompted Confession \#{current_count:04} ** \n {ask_a_question}"
+
+    embed = Embed(description=description)
+
+    await inter.channel.send(embed=embed)
+    return
