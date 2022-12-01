@@ -1,6 +1,7 @@
 
-from disnake import ApplicationCommandInteraction, Embed
-from disnake.ext.commands import InteractionBot
+from disnake import ApplicationCommandInteraction, Embed, Attachment
+from disnake.ext.commands import InteractionBot, Param
+from disnake.abc import GuildChannel
 
 from datetime import datetime
 import pytz
@@ -19,28 +20,42 @@ database = Database(SPREADSHEET_KEY);
 async def on_ready():
     print("Bot is now ready!")
 
-@bot.slash_command(name="confess", description="Confess with a nickname.")
-async def confess(inter: ApplicationCommandInteraction, message: str, nickname: str, password: str) -> None:
-
-    await inter.response.defer(ephemeral=True)
-
-    if not await database.is_password_and_nickname_valid(nickname, password, str(inter.author.id)):
-        embed = Embed(title="Confession",
-                      description="Sorry your nickname and password does not match in the database",
-                      timestamp=datetime.now(timezone))
-        await inter.edit_original_response(embed=embed)
-        return
+@bot.slash_command(name="confess", description="Confess with a nickname")
+async def confess(
+        inter: ApplicationCommandInteraction,
+        message: str,
+        attachment: Attachment = Param(default=None, description=f"Image/GIF to attach to the confession"),
+        channel: GuildChannel = Param(default=None, description=f"The channel to send the confession to"),
+    ) -> None:
     
+    await inter.response.defer(ephemeral=True)
+    nickname = await database.get_nickname_from_session(str(inter.author.id))
+    if nickname is None:
+        embed = Embed(title="Error", description="It seems like you haven't logged in yet.\n\nIf you don't have a nickname yet, please register one using `/register`.\n\nIf you have one already, please login via `/login`.\n\nNote that you can create as many nicknames as you like!", color=0xFF0000)
+        await inter.edit_original_message(embed=embed)
+        return
+
+    if channel is None:
+        channel = inter.channel
+    
+    if channel.permissions_for(inter.guild.me).send_messages is False:
+        embed = Embed(title="Error", description="I don't have permission to send messages in that channel!", color=0xFF0000)
+        await inter.edit_original_message(embed=embed)
+        return
+
     current_count = await database.increment_counter()
-    # description = f"**[{current_count:04}] {nickname} confessed:** {message}"
-    description = f"**{nickname} confessed:** {message}\n({current_count:04})"
+    description = f"**{nickname} confessed:** {message}"
 
     embed = Embed(description=description)
+    if attachment is not None:
+        embed.set_image(url=attachment.url)
+    embed.set_footer(text=f"Confession ID: {current_count:04}")
 
-    await inter.channel.send(embed=embed)
+    await channel.send(embed=embed)
+    await inter.edit_original_message(embed=Embed(title="Success", description="Your confession has been sent!", color=0x00FF00))
     return
 
-@bot.slash_command(name="register", description="Register a nickname with a password")
+@bot.slash_command(name="register", description="Register a new nickname")
 async def register(inter: ApplicationCommandInteraction, nickname: str, password: str) -> None:
 
     await inter.response.defer(ephemeral=True)
@@ -57,30 +72,110 @@ async def register(inter: ApplicationCommandInteraction, nickname: str, password
                   timestamp=datetime.now(timezone))
 
     await inter.edit_original_response(embed=embed)
-    return 
 
-@bot.slash_command(name="unregister", description="Unregister a nickname with a password")
-async def unregister(inter: ApplicationCommandInteraction, nickname: str, password: str) -> None:
+    await login(inter, nickname, password)
+    return
+
+@bot.slash_command(name="login", description="Login to your account")
+async def login(inter: ApplicationCommandInteraction, nickname: str, password: str) -> None:
     
-        await inter.response.defer(ephemeral=True)
-        if not await database.is_password_and_nickname_valid(nickname, password, str(inter.author.id)):
-            embed = Embed(title="Confession",
-                        description=f"Sorry, the nickname: `{nickname}`, does not exist in the database.",
-                        timestamp=datetime.now(timezone))
-            await inter.edit_original_response(embed=embed)
-            return 
-    
-        await database.unregister_nickname(nickname, password, str(inter.author.id))
+    await inter.response.defer(ephemeral=True)
+    if not await database.is_password_and_nickname_valid(nickname, password, str(inter.author.id)):
         embed = Embed(title="Confession",
-                    description=f"RIP 🥀 {nickname}\n\nFly high butterfly 🥹\n\n🕊️ Died peacefully in {datetime.now(timezone).strftime('%b %d, %Y')}")
-    
-        await inter.channel.send(embed=embed)
+                    description="Sorry your nickname and password does not match in the database",
+                    timestamp=datetime.now(timezone))
+        await inter.edit_original_response(embed=embed)
         return
+
+    await database.logout_user(str(inter.author.id))
+
+    embed = Embed(title="Confession",
+                description=f"Successfully logged in as `{nickname}`",
+                timestamp=datetime.now(timezone))
+
+    await database.login_user(nickname, password, str(inter.author.id))
+
+    await inter.edit_original_response(embed=embed)
+    return
+
+@bot.slash_command(name="logout", description="Logout from current account")
+async def logout(inter: ApplicationCommandInteraction) -> None:
+        
+        await inter.response.defer(ephemeral=True)
+        valid = await database.logout_user(str(inter.author.id))
+        if valid is False:
+            embed = Embed(title="Error", description="You are not logged in.", color=0xFF0000)
+            await inter.edit_original_message(embed=embed)
+            return
+        
+        embed = Embed(title="Confession",
+                    description="Successfully logged out",
+                    timestamp=datetime.now(timezone))
     
-@bot.slash_command(name="changepassword", description="Change password for a nickname")
-async def change_password(inter: ApplicationCommandInteraction, nickname: str, old_password: str, new_password: str) -> None:
+        await inter.edit_original_response(embed=embed)
+        return
+
+
+@bot.slash_command()
+async def user(inter: ApplicationCommandInteraction):
+    pass
+
+@user.sub_command(name="delete", description="Delete current nickname")
+async def delete(inter: ApplicationCommandInteraction, password: str) -> None:
 
     await inter.response.defer(ephemeral=True)
+    nickname = await database.get_nickname_from_session(str(inter.author.id))
+    if nickname is None:
+        embed = Embed(title="Error", description="You don't have a nickname yet. Please register one using `/register` or if you have one already, login via '/login'.", color=0xFF0000)
+        await inter.edit_original_message(embed=embed)
+        return
+    
+    if not await database.is_password_and_nickname_valid(nickname, password, str(inter.author.id)):
+        embed = Embed(title="Confession",
+                    description=f"Sorry, the nickname: `{nickname}`, does not exist in the database.",
+                    timestamp=datetime.now(timezone))
+        await inter.edit_original_response(embed=embed)
+        return 
+
+    await database.delete_nickname(nickname, password, str(inter.author.id))
+    embed = Embed(title="Confession",
+                description=f"RIP 🥀 {nickname}\n\nFly high butterfly 🥹\n\n🕊️ Died peacefully in {datetime.now(timezone).strftime('%b %d, %Y')}")
+
+    await inter.channel.send(embed=embed)
+    return
+
+@user.sub_command_group()
+async def change(inter: ApplicationCommandInteraction):
+    pass
+
+@change.sub_command(name="nickname", description="Change current nickname")
+async def change_nickname(inter: ApplicationCommandInteraction, nickname: str) -> None:
+
+    await inter.response.defer(ephemeral=True)
+    nickname = await database.get_nickname_from_session(str(inter.author.id))
+    if nickname is None:
+        embed = Embed(title="Error", description="You don't have a nickname yet. Please register one using `/register` or if you have one already, login via '/login'.", color=0xFF0000)
+        await inter.edit_original_message(embed=embed)
+        return
+
+    await database.change_nickname(nickname, inter.author.id)
+    embed = Embed(title="Confession",
+                description=f"Successfully changed nickname to `{nickname}`",
+                timestamp=datetime.now(timezone))
+
+    await inter.edit_original_response(embed=embed)
+    return
+
+@change.sub_command(name="password", description="Change current password")
+async def change_password(inter: ApplicationCommandInteraction, old_password: str, new_password: str) -> None:
+
+    await inter.response.defer(ephemeral=True)
+    nickname = await database.get_nickname_from_session(str(inter.author.id))
+    if nickname is None:
+        embed = Embed(title="Error", description="You don't have a nickname yet. Please register one using `/register` or if you have one already, login via `/login`.", color=0xFF0000)
+        await inter.edit_original_message(embed=embed)
+        return
+    
     if not await database.is_password_and_nickname_valid(nickname, old_password, str(inter.author.id)):
         embed = Embed(title="Confession",
                     description=f"Sorry, the nickname: `{nickname}`, does not exist in the database.",
