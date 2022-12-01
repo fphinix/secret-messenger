@@ -109,3 +109,17 @@ async def confess(inter: ApplicationCommandInteraction, ask_a_question: str) -> 
 
     await inter.channel.send(embed=embed)
     return
+
+@bot.slash_command(name="reply", description="Reply to a prompted confession.")
+async def confess(inter: ApplicationCommandInteraction, reply: str, confession_id: str) -> None:
+
+    await inter.response.defer(ephemeral=True)
+
+    current_count = await database.question_increment_counter()
+    # description = f"**[{current_count:04}] {nickname} confessed:** {message}"
+    description = f"** Reply to \#{confession_id:04} ** \n {reply}"
+
+    embed = Embed(description=description)
+
+    await inter.channel.send(embed=embed)
+    return
