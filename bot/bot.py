@@ -101,7 +101,7 @@ async def confess(inter: ApplicationCommandInteraction, ask_a_question: str) -> 
 
     await inter.response.defer(ephemeral=True)
 
-    current_count = await database.question_increment_counter()
+    current_count = await database.increment_prompted_question_counter()
     # description = f"**[{current_count:04}] {nickname} confessed:** {message}"
     description = f"** Prompted Confession \#{current_count:04} ** \n {ask_a_question}"
 
@@ -116,7 +116,6 @@ async def confess(inter: ApplicationCommandInteraction, ask_a_question: str) -> 
 async def confess(inter: ApplicationCommandInteraction, reply: str, confession_id: str, nickname: str, password: str) -> None:
 
     await inter.response.defer(ephemeral=True)
-    #option argument for nickname and password
 
     if not await database.is_password_and_nickname_valid(nickname, password, str(inter.author.id)):
         embed = Embed(title="Confession",
@@ -144,35 +143,3 @@ async def confess(inter: ApplicationCommandInteraction, reply: str, confession_i
     await inter.channel.send(embed=embed)
     return
     
-# @bot.slash_command(name="reply", description="Reply to a prompted confession.")
-# async def confess(inter: ApplicationCommandInteraction, reply: str, confession_id: str, nickname: typing.Optional[str], password: typing.Optional[str]) -> None:
-
-#     await inter.response.defer(ephemeral=True)
-#     #option argument for nickname and password
-
-#     #check validity
-
-#     #embed if there is nickname
-
-#     if not await database.is_password_and_nickname_valid(nickname, password, str(inter.author.id)):
-#         embed = Embed(title="Confession",
-#                       description="Sorry your nickname and password does not match in the database",
-#                       timestamp=datetime.now(timezone))
-#         await inter.edit_original_response(embed=embed)
-#         return
-
-#     if await database.is_password_and_nickname_valid(nickname, password, str(inter.author.id)):
-#         description = f"** {nickname} reply in \#{confession_id:04} ** \n {reply}"
-#         embed = Embed(description=description)
-        
-#         await inter.channel.send(embed=embed)
-#         return
-
-#     # description = f"**[{current_count:04}] {nickname} confessed:** {message}"
-#     description = f"** Reply to \#{confession_id:04} ** \n {reply}"
-
-#     embed = Embed(description=description)
-
-#     await inter.channel.send(embed=embed)
-#     return
-
