@@ -102,7 +102,7 @@ class Database:
         await worksheet.update_cell(1, 2, int(cell.value) + 1)
         return int(cell.value)
 
-    async def question_increment_counter(self) -> int:
+    async def increment_prompted_question_counter(self) -> int:
         worksheet = await self._get_worksheet(1)
         cell = await worksheet.cell(2, 2)
         await worksheet.update_cell(2, 2, int(cell.value) + 1)
