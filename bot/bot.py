@@ -97,23 +97,24 @@ async def change_password(inter: ApplicationCommandInteraction, nickname: str, o
     return
 
 @bot.slash_command(name="prompt", description="Create a prompted confession.")
-async def confess(inter: ApplicationCommandInteraction, ask_a_question: str) -> None:
+async def prompt(inter: ApplicationCommandInteraction, ask_a_question: str) -> None:
 
     await inter.response.defer(ephemeral=True)
 
     current_count = await database.increment_prompted_question_counter()
     # description = f"**[{current_count:04}] {nickname} confessed:** {message}"
-    description = f"** Prompted Confession \#{current_count:04} ** \n {ask_a_question}"
-
-    embed = Embed(description=description)
+    description = f"{ask_a_question}"
+    title = f"Prompted Confession \#{current_count:04}"
+      
+    embed = Embed(title=title, description=description)
 
     await inter.channel.send(embed=embed)
     return
 
 
 
-@bot.slash_command(name="reply_with_nickname", description="Reply to a prompted confession with your nickname.")
-async def confess(inter: ApplicationCommandInteraction, reply: str, confession_id: str, nickname: str, password: str) -> None:
+@bot.slash_command(name="Reply with nickname", description="Reply to a prompted confession with your nickname.")
+async def reply_with_nickname(inter: ApplicationCommandInteraction, reply: str, confession_id: str, nickname: str, password: str) -> None:
 
     await inter.response.defer(ephemeral=True)
 
@@ -132,7 +133,7 @@ async def confess(inter: ApplicationCommandInteraction, reply: str, confession_i
     return
 
 @bot.slash_command(name="reply", description="Reply to a prompted confession.")
-async def confess(inter: ApplicationCommandInteraction, reply: str, confession_id: str) -> None:
+async def reply(inter: ApplicationCommandInteraction, reply: str, confession_id: str) -> None:
 
     await inter.response.defer(ephemeral=True)
 
