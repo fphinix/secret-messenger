@@ -208,7 +208,7 @@ async def prompt(inter: ApplicationCommandInteraction, ask_a_question: str) -> N
 
 
 
-@bot.slash_command(name="Reply with nickname", description="Reply to a prompted confession with your nickname.")
+@bot.slash_command(name="reply_with_nickname", description="Reply to a prompted confession with your nickname.")
 async def reply_with_nickname(inter: ApplicationCommandInteraction, reply: str, confession_id: str, nickname: str, password: str) -> None:
 
     await inter.response.defer(ephemeral=True)
