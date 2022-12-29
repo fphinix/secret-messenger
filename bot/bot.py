@@ -1,5 +1,5 @@
 
-from disnake import ApplicationCommandInteraction, Embed, Attachment
+from disnake import ApplicationCommandInteraction, Embed, Attachment, ForumChannel
 from disnake.ext.commands import InteractionBot, Param
 from disnake.abc import GuildChannel
 
@@ -14,7 +14,7 @@ bot = InteractionBot(sync_commands=True, test_guilds=[988079158477332481, 882925
 SPREADSHEET_KEY = "1iBlW-C4odqIE_59uZzoS8B78w_Bk0Eqy9X-AX8jEST4"
 timezone = pytz.timezone("Asia/Manila")
 
-database = Database(SPREADSHEET_KEY);
+database = Database(SPREADSHEET_KEY)
 
 @bot.event
 async def on_ready():
@@ -189,4 +189,17 @@ async def change_password(inter: ApplicationCommandInteraction, old_password: st
                 timestamp=datetime.now(timezone))
 
     await inter.edit_original_response(embed=embed)
+    return
+
+@bot.slash_command(name="post", description="Post anonymously on forums")
+async def post(
+        inter: ApplicationCommandInteraction,
+        title: str = Param(description=f"Title of the post"),
+        message: str = Param(description=f"Message to post"),
+        channel: ForumChannel = Param(description=f"The forum to send the confession to"),
+    ) -> None:
+
+    await inter.response.defer(ephemeral=True)
+    await channel.create_thread(name=title, content=message, applied_tags={channel.available_tags[0]})
+    await inter.edit_original_response(content="Successfully posted anonymously to the forums")
     return
