@@ -203,3 +203,42 @@ async def post(
     await channel.create_thread(name=title, content=message, applied_tags={channel.available_tags[0]})
     await inter.edit_original_response(content="Successfully posted anonymously to the forums")
     return
+
+@bot.slash_command(name="prompt", description="Create a prompted confession.")
+async def prompt(inter: ApplicationCommandInteraction, ask_a_question: str) -> None:
+
+    await inter.response.defer(ephemeral=True)
+
+    current_count = await database.increment_prompted_question_counter()
+    # description = f"**[{current_count:04}] {nickname} confessed:** {message}"
+    description = f"{ask_a_question}"
+    title = f"Prompted Confession \#{current_count:04}"
+      
+    embed = Embed(title=title, description=description)
+
+    await inter.channel.send(embed=embed)
+    return
+
+@bot.slash_command(name="reply", description="Reply to a prompted confession.")
+async def reply(inter: ApplicationCommandInteraction, reply: str, confession_id: str, with_nickname: bool = False) -> None:
+
+    await inter.response.defer(ephemeral=True)
+    
+    nickname = await database.get_nickname_from_session(str(inter.author.id))
+    if nickname is None:
+        embed = Embed(title="Error", description="It seems like you haven't logged in yet.\n\nIf you don't have a nickname yet, please register one using `/register`.\n\nIf you have one already, please login via `/login`.\n\nNote that you can create as many nicknames as you like!", color=0xFF0000)
+        await inter.edit_original_message(embed=embed)
+        return
+    
+    description = f"** Reply to \#{confession_id:04} ** \n {reply}"
+    
+    if with_nickname:
+        description = f"** {nickname} replied in \#{confession_id:04} ** \n {reply}"
+    
+    embed = Embed(description=description)
+    
+    current_count = await database.increment_counter()
+    embed.set_footer(text=f"Confession ID: {current_count:04}")
+    
+    await inter.channel.send(embed=embed)
+    return

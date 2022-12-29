@@ -91,7 +91,7 @@ class Database:
         
         cell = await self._find_value_from_column(worksheet, 1, nickname)
         await worksheet.delete_row(cell.row)
-        self.logout_user(userid)
+        await self.logout_user(userid)
         return True
     
     async def change_nickname(self, new_nickname: str, userid: str) -> bool:
@@ -117,6 +117,18 @@ class Database:
         await worksheet.update_cell(cell.row, cell.col + 1, hashed_password)
         return True
     
+    async def increment_counter(self) -> int:
+        worksheet = await self._get_worksheet(1)
+        cell = await worksheet.cell(1, 2)
+        await worksheet.update_cell(1, 2, int(cell.value) + 1)
+        return int(cell.value)
+
+    async def increment_prompted_question_counter(self) -> int:
+        worksheet = await self._get_worksheet(1)
+        cell = await worksheet.cell(2, 2)
+        await worksheet.update_cell(2, 2, int(cell.value) + 1)
+        return int(cell.value)
+
     async def login_user(self, nickname: str, password: str, userid: str) -> bool:
         is_valid = await self.is_password_and_nickname_valid(nickname, password, userid)
         if is_valid:
