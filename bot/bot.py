@@ -219,6 +219,35 @@ async def prompt(inter: ApplicationCommandInteraction, ask_a_question: str) -> N
     await inter.channel.send(embed=embed)
     return
 
+@bot.slash_command(name="confession", description="Create a completely anonymous confession (excludes your nickname).")
+async def confession(
+        inter: ApplicationCommandInteraction, 
+        confess: str,
+        attachment: Attachment = Param(default=None, description=f"Image/GIF to attach to the confession"),
+        channel: GuildChannel = Param(default=None, description=f"The channel to send the confession to"),
+    ) -> None:
+    
+    await inter.response.defer(ephemeral=True)
+    if channel is None:
+        channel = inter.channel
+    
+    if channel.permissions_for(inter.guild.me).send_messages is False:
+        embed = Embed(title="Error", description="I don't have permission to send messages in that channel!", color=0xFF0000)
+        await inter.edit_original_message(embed=embed)
+        return
+
+    current_count = await database.increment_counter()
+    description = f"**Confession:** {message}"
+
+    embed = Embed(description=description)
+    if attachment is not None:
+        embed.set_image(url=attachment.url)
+    embed.set_footer(text=f"Confession ID: {current_count:04}")
+
+    await channel.send(embed=embed)
+    await inter.edit_original_message(embed=Embed(title="Success", description="Your confession has been sent!", color=0x00FF00))
+    return
+
 @bot.slash_command(name="reply", description="Reply to a prompted confession.")
 async def reply(inter: ApplicationCommandInteraction, reply: str, confession_id: str, with_nickname: bool = False) -> None:
 
