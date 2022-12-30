@@ -237,7 +237,7 @@ async def confession(
         return
 
     current_count = await database.increment_counter()
-    description = f"**Confession:** {message}"
+    description = f"**Confession:** {confess}"
 
     embed = Embed(description=description)
     if attachment is not None:
